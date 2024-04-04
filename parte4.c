@@ -1,8 +1,8 @@
 /*
- * Compile:  mpicc -g -Wall -o etapa4 etapa4.c -lpthread -lrt
- * Usage:    mpiexec -n 3 ./etapa4
+ * Compile:  mpicc -g -Wall -o parte4 parte4.c -lpthread -lrt
+ * Usage:    mpiexec -n 3 ./parte4
  */
- 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -25,7 +25,7 @@ typedef struct {
 typedef struct {
     int id;
     Relogio relogio;
-    int nsnapshot;//snapshotPega
+    int nsnapshot;
 } Process;
 
 typedef struct {
@@ -45,8 +45,8 @@ Relogio saidaClockCont[FILA_SIZE];
 pthread_mutex_t entradaMUTEX;
 pthread_cond_t entradaVAZIA;
 pthread_cond_t entradaCHEIO;
-int entradafilaRelogio = 0;
-Relogio entradafilaRelogio[FILA_SIZE];
+int entradacontadorrelogio = 0;
+Relogio entradafilaClock[FILA_SIZE];
 
 void Event(int pid, Relogio *relogio) {
     relogio->p[pid]++;
@@ -99,7 +99,7 @@ void SendControl(int id, Relogio *relogio) {
 
 Relogio* ReceiveControl(int id, Relogio *relogio) {
     Relogio* temp = relogio;
-    Relogio relogio2 = GetClock(&entradaMUTEX, &entradaVAZIA, &entradaCHEIO, &entradafilaRelogio, entradafilaRelogio);
+    Relogio relogio2 = GetClock(&entradaMUTEX, &entradaVAZIA, &entradaCHEIO, &entradacontadorrelogio, entradafilaClock);
 
     if (relogio2.idProcess == SNAPSHOT_MARKER) {
         temp = &relogio2;
@@ -132,6 +132,7 @@ void Receive(int pid, Relogio *relogio){
     relogio->p[0] = mensagem[0];
     relogio->p[1] = mensagem[1];
     relogio->p[2] = mensagem[2];
+
 }
 
 void InitiateSnapshot(Process* process) {
@@ -139,7 +140,8 @@ void InitiateSnapshot(Process* process) {
     Snapshot snapshot;
     snapshot.relogio = process->relogio;
     for (int i = 0; i < BUFFER_SIZE; i++) {
-        snapshot.in[i] = entradafilaRelogio[i];
+        snapshot.in[i] = entradafilaClock
+    [i];
         snapshot.out[i] = saidaClockCont[i];
     }
     process->nsnapshot = 1; //Sinaliza na estrutura que o processo já fez snapshot
@@ -150,8 +152,8 @@ void InitiateSnapshot(Process* process) {
     //Imprime o Snapshot (Relógio, canal de entrada e canal de saída)
     printf("Snapshot criado no processo %d. Relogio: (%d, %d, %d)\n",
            process->id, process->relogio.p[0], process->relogio.p[1], process->relogio.p[2]);
-    printf("CANAL ENTRADA ");
-    for (int i = 0; i < entradafilaRelogio; i++){
+    printf("CANAL ENTRADA: ");
+    for (int i = 0; i < entradacontadorrelogio; i++){
         printf("[(%d, %d, %d)]  ", snapshot.in[i].p[0], snapshot.in[i].p[1], snapshot.in[i].p[2]);
     }
     printf("\nCANAL SAIDA: ");
@@ -170,6 +172,7 @@ void InitiateSnapshot(Process* process) {
             PutClock(&saidaMUTEX, &saidaVAZIA, &saidaCHEIO, &saidacontRelogio, *relogio, saidaClockCont);
         }
     }
+
     free(relogio);
 }
 
@@ -204,14 +207,11 @@ void *MainThread(void *args) {
              if (!process.nsnapshot) {
             InitiateSnapshot(&process);
         }
-     
 
         relogio = ReceiveControl(pid, relogio);
-        
 
         relogio->idProcess = 1;
         SendControl(pid, relogio);
-
 
         Event(pid, relogio);
 
@@ -221,11 +221,9 @@ void *MainThread(void *args) {
         SendControl(pid, relogio);
 
         relogio = ReceiveControl(pid, relogio);
-        
 
         relogio = ReceiveControl(pid, relogio);
-
-        
+      
     } else if (pid == 2) {
 
         Event(pid, relogio);
@@ -234,6 +232,7 @@ void *MainThread(void *args) {
         SendControl(pid, relogio);
 
         relogio = ReceiveControl(pid, relogio);
+
     }
 
     return NULL;
@@ -257,7 +256,7 @@ void *ReceiveThread(void *args) {
 
     while(1){
       Receive(pid, &relogio);
-      PutClock(&entradaMUTEX, &entradaVAZIA, &entradaCHEIO, &entradafilaRelogio, relogio, entradafilaRelogio);
+      PutClock(&entradaMUTEX, &entradaVAZIA, &entradaCHEIO, &entradacontadorrelogio, relogio, entradafilaClock);
     }
 
     return NULL;
@@ -272,7 +271,7 @@ void process0(){
 
    for (int i = 0; i < NTHREADS; i++){
       if (pthread_join(thread[i], NULL) != 0) {
-         perror("Falha ao juntar a thread");
+         perror("Erro! Thread apresentou problema a tentativa de juntar.");
       }
    }
 }
@@ -286,7 +285,7 @@ void process1(){
 
    for (int i = 0; i < NTHREADS; i++){
       if (pthread_join(thread[i], NULL) != 0) {
-         perror("Falha ao juntar a thread");
+         perror("Erro! Thread apresentou problema a tentativa de juntar.");
       }
    }
 }
@@ -300,7 +299,7 @@ void process2(){
 
    for (int i = 0; i < NTHREADS; i++){
       if (pthread_join(thread[i], NULL) != 0) {
-         perror("Falha ao juntar a thread");
+         perror("Erro! Thread apresentou problema a tentativa de juntar.");
       }
    }
 }
