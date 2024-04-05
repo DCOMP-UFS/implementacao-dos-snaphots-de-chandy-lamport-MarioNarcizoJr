@@ -15,7 +15,7 @@
 #define NTHREADS 3
 #define FILA_SIZE 10
 #define SNAPSHOT_MARKER -1
-#define BUFFER_SIZE 10 // Tamanho do buffer para armazenar relógios
+#define BUFFER_SIZE 10 
 
 typedef struct {
     int p[3];
@@ -32,7 +32,7 @@ typedef struct {
     Relogio relogio;
     Relogio in[BUFFER_SIZE];
     Relogio out[BUFFER_SIZE];
-    int flag; // Flag para identificar se é um marcador
+    int flag; 
 } Snapshot;
 
 pthread_mutex_t saidaMUTEX;
@@ -104,7 +104,7 @@ Relogio* ReceiveControl(int id, Relogio *relogio) {
     if (relogio2.idProcess == SNAPSHOT_MARKER) {
         temp = &relogio2;
         return temp;
-    } //Se receber um marcador, retorna o marcador para sinalizar à thread Main que um marcador foi recebido
+    } 
 
     for (int i = 0; i < 3; i++) {
         if (temp->p[i] < relogio2.p[i]) {
@@ -121,13 +121,13 @@ void Send(int pid, Relogio *relogio){
     mensagem[0] = relogio->p[0];
     mensagem[1] = relogio->p[1];
     mensagem[2] = relogio->p[2];
-    //MPI SEND
+  
     MPI_Send(&mensagem, 3, MPI_INT, relogio->idProcess, 0, MPI_COMM_WORLD);
 }
 
 void Receive(int pid, Relogio *relogio){
     int mensagem[3];
-    //MPI RECV
+
     MPI_Recv(&mensagem, 3, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     relogio->p[0] = mensagem[0];
     relogio->p[1] = mensagem[1];
@@ -144,12 +144,12 @@ void InitiateSnapshot(Process* process) {
     [i];
         snapshot.out[i] = saidaClockCont[i];
     }
-    process->nsnapshot = 1; //Sinaliza na estrutura que o processo já fez snapshot
+    process->nsnapshot = 1; 
 
     Relogio *relogio = malloc(sizeof(Relogio));
     relogio->idProcess = SNAPSHOT_MARKER;
 
-    //Imprime o Snapshot (Relógio, canal de entrada e canal de saída)
+
     printf("Snapshot criado no processo %d. Relogio: (%d, %d, %d)\n",
            process->id, process->relogio.p[0], process->relogio.p[1], process->relogio.p[2]);
     printf("CANAL ENTRADA: ");
@@ -162,7 +162,7 @@ void InitiateSnapshot(Process* process) {
     }
     printf("\n");
 
-    //Envia marcadores (-1) para os outros processos
+
     for (int i = 0; i < 3; i++){
         if (i != process->id){
             relogio->p[0] = -1;
@@ -176,13 +176,12 @@ void InitiateSnapshot(Process* process) {
     free(relogio);
 }
 
-
 void *MainThread(void *args) {
     long id = (long) args;
     int pid = (int) id;
     Relogio* relogio = malloc(sizeof(Relogio));
 
-    // Inicializando os campos da estrutura Relogio
+
     relogio->p[0] = 0;
     relogio->p[1] = 0;
     relogio->p[2] = 0;
@@ -262,7 +261,6 @@ void *ReceiveThread(void *args) {
     return NULL;
 }
 
-// Representa o processo de rank 0
 void process0(){
    pthread_t thread[NTHREADS];
    pthread_create(&thread[0], NULL, &MainThread, (void*) 0);
@@ -276,7 +274,6 @@ void process0(){
    }
 }
 
-// Representa o processo de rank 1
 void process1(){
    pthread_t thread[NTHREADS];
    pthread_create(&thread[0], NULL, &MainThread, (void*) 1);
@@ -290,7 +287,6 @@ void process1(){
    }
 }
 
-// Representa o processo de rank 2
 void process2(){
    pthread_t thread[NTHREADS];
    pthread_create(&thread[0], NULL, &MainThread, (void*) 2);
@@ -325,9 +321,6 @@ int main(int argc, char* argv[]) {
    } else if (my_rank == 2) {
       process2();
    }
-
-   /* Finaliza MPI */
-
 
    pthread_mutex_destroy(&entradaMUTEX);
    pthread_mutex_destroy(&saidaMUTEX);
